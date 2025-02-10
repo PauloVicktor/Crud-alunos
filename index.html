@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Alunos</title>
+    <!-- CSS -->
+     <!-- Estilização -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: inline-block;
+            margin-right: 15px;
+            vertical-align: top;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            width: 200px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .edit-btn {
+            background-color: #2196F3;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+        }
+
+        .actions {
+            white-space: nowrap;
+        }
+
+        .status-ativo {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .status-inativo {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<!-- HTML -->
+ <!-- CRUD -->
+<body>
+    <h1>Gerenciamento de Alunos</h1>
+    
+    <form id="alunoForm">
+        <input type="hidden" id="alunoId">
+        <div class="form-group">
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" required>
+        </div>
+        <div class="form-group">
+            <label for="nascimento">Data de Nascimento:</label>
+            <input type="date" id="nascimento" required>
+        </div>
+        <div class="form-group">
+            <label for="mensalidade">Mensalidade (R$):</label>
+            <input type="number" id="mensalidade" step="0.01" min="0" required>
+        </div>
+        <div class="form-group">
+            <label for="ativo">Ativo:</label>
+            <label class="switch">
+                <input type="checkbox" id="ativo" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="form-group">
+            <button type="submit">Salvar</button>
+            <button type="button" onclick="alunoManager.resetForm()">Limpar</button>
+        </div>
+    </form>
+
+    <table id="alunoTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Data de Nascimento</th>
+                <th>Mensalidade</th>
+                <th>Status</th>
+                <th>Opções</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <!-- JavaScipt -->
+     <!-- Logica -->
+    <script>
+        class Database {
+            constructor() {
+                this.createTable();
+            }
+
+            createTable() {
+                if (!localStorage.getItem('alunos')) {
+                    localStorage.setItem('alunos', JSON.stringify([]));
+                }
+            }
+
+            execute(sql, params = []) {
+                let alunos = JSON.parse(localStorage.getItem('alunos') || '[]');
+                
+                if (sql.includes('INSERT')) {
+                    const newAluno = {
+                        id: alunos.length + 1,
+                        nome: params[0],
+                        nascimento: params[1],
+                        mensalidade: params[2],
+                        ativo: params[3]
+                    };
+                    alunos.push(newAluno);
+                    localStorage.setItem('alunos', JSON.stringify(alunos));
+                    return newAluno;
+                }
+                
+                if (sql.includes('SELECT')) {
+                    return alunos;
+                }
+
+                if (sql.includes('UPDATE')) {
+                    const id = params[4];
+                    alunos = alunos.map(aluno => {
+                        if (aluno.id === id) {
+                            return { 
+                                ...aluno, 
+                                nome: params[0],
+                                nascimento: params[1],
+                                mensalidade: params[2],
+                                ativo: params[3]
+                            };
+                        }
+                        return aluno;
+                    });
+                    localStorage.setItem('alunos', JSON.stringify(alunos));
+                }
+
+                if (sql.includes('DELETE')) {
+                    alunos = alunos.filter(aluno => aluno.id !== params[0]);
+                    localStorage.setItem('alunos', JSON.stringify(alunos));
+                }
+            }
+        }
+
+        class AlunoManager {
+            constructor() {
+                this.db = new Database();
+                this.loadAlunos();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('alunoForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveAluno();
+                });
+            }
+
+            formatDate(date) {
+                return new Date(date).toLocaleDateString('pt-BR');
+            }
+
+            formatCurrency(value) {
+                return new Intl.NumberFormat('pt-BR', { 
+                    style: 'currency', 
+                    currency: 'BRL' 
+                }).format(value);
+            }
+
+            loadAlunos() {
+                const alunos = this.db.execute('SELECT * FROM alunos');
+                const tbody = document.querySelector('#alunoTable tbody');
+                tbody.innerHTML = '';
+
+                alunos.forEach(aluno => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${aluno.id}</td>
+                        <td>${aluno.nome}</td>
+                        <td>${this.formatDate(aluno.nascimento)}</td>
+                        <td>${this.formatCurrency(aluno.mensalidade)}</td>
+                        <td class="${aluno.ativo ? 'status-ativo' : 'status-inativo'}">
+                            ${aluno.ativo ? 'Ativo' : 'Inativo'}
+                        </td>
+                        <td class="actions">
+                            <button class="edit-btn" onclick="alunoManager.editAluno(${aluno.id}, '${aluno.nome}', '${aluno.nascimento}', ${aluno.mensalidade}, ${aluno.ativo})">Editar</button>
+                            <button class="delete-btn" onclick="alunoManager.deleteAluno(${aluno.id})">Excluir</button>
+                        </td>
+                    `;
+                });
+            }
+
+            saveAluno() {
+                const alunoId = document.getElementById('alunoId').value;
+                const nome = document.getElementById('nome').value;
+                const nascimento = document.getElementById('nascimento').value;
+                const mensalidade = parseFloat(document.getElementById('mensalidade').value);
+                const ativo = document.getElementById('ativo').checked;
+
+                if (alunoId) {
+                    this.db.execute('UPDATE alunos SET nome = ?, nascimento = ?, mensalidade = ?, ativo = ? WHERE id = ?', 
+                        [nome, nascimento, mensalidade, ativo, parseInt(alunoId)]);
+                } else {
+                    this.db.execute('INSERT INTO alunos (nome, nascimento, mensalidade, ativo) VALUES (?, ?, ?, ?)', 
+                        [nome, nascimento, mensalidade, ativo]);
+                }
+
+                this.loadAlunos();
+                this.resetForm();
+            }
+
+            editAluno(id, nome, nascimento, mensalidade, ativo) {
+                document.getElementById('alunoId').value = id;
+                document.getElementById('nome').value = nome;
+                document.getElementById('nascimento').value = nascimento;
+                document.getElementById('mensalidade').value = mensalidade;
+                document.getElementById('ativo').checked = ativo;
+            }
+
+            deleteAluno(id) {
+                if (confirm('Tem certeza que deseja excluir este aluno?')) {
+                    this.db.execute('DELETE FROM alunos WHERE id = ?', [id]);
+                    this.loadAlunos();
+                }
+            }
+
+            resetForm() {
+                document.getElementById('alunoForm').reset();
+                document.getElementById('alunoId').value = '';
+            }
+        }
+
+        const alunoManager = new AlunoManager();
+    </script>
+</body>
+</html>
